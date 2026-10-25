@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <title>Rocket Studio 2.0 — 접속 허브</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+        background-color: #16181d;
+        color: #f3f4f6;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .card {
+        width: 100%;
+        max-width: 440px;
+        background: #21242c;
+        border: 1px solid #323642;
+        border-radius: 18px;
+        padding: 32px 28px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+        text-align: center;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .brand img {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        object-fit: contain;
+      }
+      .brand-title {
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .badge {
+        font-size: 11px;
+        padding: 2px 7px;
+        border-radius: 6px;
+        background: #2d313b;
+        border: 1px solid #3f4452;
+        color: #a6abb8;
+        font-family: monospace;
+      }
+      .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid #323642;
+        border-top-color: #f3f4f6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 12px auto 20px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .status-title {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .status-desc {
+        font-size: 13px;
+        color: #9ca3af;
+        line-height: 1.5;
+        margin-bottom: 20px;
+      }
+      .url-box {
+        font-family: monospace;
+        font-size: 12px;
+        background: #181a20;
+        border: 1px solid #2e323d;
+        border-radius: 10px;
+        padding: 10px 12px;
+        color: #9ce0b5;
+        word-break: break-all;
+        margin-bottom: 18px;
+        display: none;
+      }
+      .btn-group {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+      }
+      .btn {
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid #454a57;
+        background: #30343f;
+        color: #f3f4f6;
+        text-decoration: none;
+        transition: 0.15s;
+      }
+      .btn:hover {
+        background: #3b404e;
+      }
+      .btn-primary {
+        background: #f3f4f6;
+        color: #18191c;
+        border-color: #f3f4f6;
+      }
+      .btn-primary:hover {
+        background: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="brand">
+        <img src="./favicon.png" alt="RocketStudio" />
+        <span class="brand-title">RocketStudio</span>
+        <span class="badge">v2.0 Hub</span>
+      </div>
+
+      <div id="spinner" class="spinner"></div>
+      <div id="statusTitle" class="status-title">최신 Cloudflare 터널 주소를 찾는 중...</div>
+      <div id="statusDesc" class="status-desc">
+        호스트 서버에 등록된 보안 터널 주소를 확인하여 자동으로 연결합니다.
+      </div>
+      <div id="urlBox" class="url-box"></div>
+
+      <div class="btn-group">
+        <a id="directBtn" href="#" class="btn btn-primary" style="display: none">즉시 접속하기</a>
+        <button onclick="connectToTunnel()" class="btn">다시 확인</button>
+      </div>
+    </div>
+
+    <script>
+      const GIST_ID = "bfcd485b03e6ebedef0d52e4ebb743f8";
+
+      async function connectToTunnel() {
+        const spinner = document.getElementById("spinner");
+        const statusTitle = document.getElementById("statusTitle");
+        const statusDesc = document.getElementById("statusDesc");
+        const urlBox = document.getElementById("urlBox");
+        const directBtn = document.getElementById("directBtn");
+
+        spinner.style.display = "block";
+        urlBox.style.display = "none";
+        directBtn.style.display = "none";
+        statusTitle.textContent = "최신 Cloudflare 터널 주소를 찾는 중...";
+        statusDesc.textContent = "호스트 서버에 등록된 보안 터널 주소를 확인하여 자동으로 연결합니다.";
+
+        try {
+          const res = await fetch(`https://api.github.com/gists/${GIST_ID}?t=${Date.now()}`, {
+            cache: "no-store",
+          });
+          if (!res.ok) throw new Error("Gist 정보를 불러올 수 없습니다.");
+          const data = await res.json();
+          const files = data.files || {};
+
+          let targetUrl = "";
+          if (files["rocket_v2_tunnel.json"] && files["rocket_v2_tunnel.json"].content) {
+            const parsed = JSON.parse(files["rocket_v2_tunnel.json"].content);
+            targetUrl = (parsed.url || "").trim();
+          }
+          if (!targetUrl && files["tts_tunnel.json"] && files["tts_tunnel.json"].content) {
+            const parsed = JSON.parse(files["tts_tunnel.json"].content);
+            targetUrl = (parsed.url || "").trim();
+          }
+
+          if (!targetUrl) {
+            throw new Error("등록된 활성 터널 주소가 없습니다.");
+          }
+
+          urlBox.textContent = targetUrl;
+          urlBox.style.display = "block";
+          directBtn.href = targetUrl;
+          directBtn.style.display = "inline-block";
+
+          statusTitle.textContent = "터널 주소 확인 완료! 이동 중...";
+          statusDesc.textContent = "잠시 후 Rocket Studio 2.0 로그인 화면으로 자동 이동합니다.";
+
+          setTimeout(() => {
+            window.location.replace(targetUrl);
+          }, 600);
+        } catch (err) {
+          spinner.style.display = "none";
+          statusTitle.textContent = "현재 호스트 서버에 연결할 수 없습니다";
+          statusDesc.textContent =
+            err.message || "호스트 PC에서 Rocket Studio 2.0 터널 서버가 실행 중인지 확인해 주세요.";
+        }
+      }
+
+      connectToTunnel();
+    </script>
+  </body>
+</html>
